@@ -1,4 +1,4 @@
-;;; emacs-simple-ide-mcp.el --- MCP HTTP server for Emacs -*- lexical-binding: t; -*-
+;;; simple-ide-mcp.el --- MCP HTTP server -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 hgonzale
 
@@ -15,7 +15,7 @@
 ;; with the running Emacs instance: open files, navigate symbols, query LSP
 ;; diagnostics, and show Magit views.
 ;;
-;; Usage: (require 'emacs-simple-ide-mcp)
+;; Usage: (require 'simple-ide-mcp)
 ;; The server starts automatically in interactive sessions.
 
 ;;; Code:
@@ -42,12 +42,12 @@
 
 ;;; ─── Configuration ───────────────────────────────────────────────────────────
 
-(defvar emacs-simple-ide-mcp-port 7777
-  "Port on which the Emacs MCP HTTP server listens.")
+(defvar simple-ide-mcp-port 7777
+  "Port on which the MCP HTTP server listens.")
 
 ;;; ─── Tool schemas ────────────────────────────────────────────────────────────
 
-(defconst emacs-simple-ide-mcp--tools
+(defconst simple-ide-mcp--tools
   (list
    '((name . "open_file")
      (description . "Open a file in Emacs, optionally at a specific line and column. Raises the Emacs frame.")
@@ -113,7 +113,7 @@
 
 ;;; ─── Tool availability ───────────────────────────────────────────────────────
 
-(defun emacs-simple-ide-mcp--available-tools ()
+(defun simple-ide-mcp--available-tools ()
   "Return tool schemas filtered to those whose dependencies are loaded."
   (seq-filter
    (lambda (tool)
@@ -121,11 +121,11 @@
        ((or "show_diff" "show_status") (featurep 'magit))
        ("get_diagnostics"              (featurep 'flycheck))
        (_                              t)))
-   emacs-simple-ide-mcp--tools))
+   simple-ide-mcp--tools))
 
 ;;; ─── Tool implementations ────────────────────────────────────────────────────
 
-(defun emacs-simple-ide-mcp--open-file (args)
+(defun simple-ide-mcp--open-file (args)
   "Open a file in Emacs with optional line/col navigation.
 ARGS is an alist with keys: path (required), line, col."
   (let* ((path (alist-get 'path args))
@@ -144,7 +144,7 @@ ARGS is an alist with keys: path (required), line, col."
     (format "Opened %s%s" path
             (if line (format " at line %d" line) ""))))
 
-(defun emacs-simple-ide-mcp--collect-imenu-names (index prefix)
+(defun simple-ide-mcp--collect-imenu-names (index prefix)
   "Recursively collect symbol name strings from an imenu INDEX.
 PREFIX is prepended to each name to reflect nesting."
   (let (names)
@@ -152,13 +152,13 @@ PREFIX is prepended to each name to reflect nesting."
       (unless (equal (car item) "*Rescan*")
         (if (imenu--subalist-p item)
             (setq names (append names
-                                (emacs-simple-ide-mcp--collect-imenu-names
+                                (simple-ide-mcp--collect-imenu-names
                                  (cdr item)
                                  (concat prefix (car item) "/"))))
           (push (concat prefix (car item)) names))))
     (nreverse names)))
 
-(defun emacs-simple-ide-mcp--list-symbols (args)
+(defun simple-ide-mcp--list-symbols (args)
   "List imenu symbols in a file.
 ARGS is an alist with key: path (required)."
   (let ((path (alist-get 'path args)))
@@ -169,11 +169,11 @@ ARGS is an alist with key: path (required)."
                      (error nil))))
         (if index
             (mapconcat #'identity
-                       (emacs-simple-ide-mcp--collect-imenu-names index "")
+                       (simple-ide-mcp--collect-imenu-names index "")
                        "\n")
           "No symbols found (imenu not supported for this file type)")))))
 
-(defun emacs-simple-ide-mcp--format-xref (item)
+(defun simple-ide-mcp--format-xref (item)
   "Format an xref ITEM as a location string."
   (condition-case nil
       (let* ((loc  (xref-item-location item))
@@ -183,7 +183,7 @@ ARGS is an alist with key: path (required)."
         (format "%s:%d  %s" file line sum))
     (error (format "%s" item))))
 
-(defun emacs-simple-ide-mcp--find-xref (args method)
+(defun simple-ide-mcp--find-xref (args method)
   "Find definitions or references for the symbol named in ARGS.
 METHOD is \\=`:def\\=' or \\=`:ref\\='."
   (let* ((symbol-name  (alist-get 'symbol       args))
@@ -205,7 +205,7 @@ METHOD is \\=`:def\\=' or \\=`:ref\\='."
                           (error nil))))
           (cond
            (items
-            (mapconcat #'emacs-simple-ide-mcp--format-xref items "\n"))
+            (mapconcat #'simple-ide-mcp--format-xref items "\n"))
            (lsp-active
             (if (eq method :def)
                 (format "No definition found for %s" symbol-name)
@@ -213,15 +213,15 @@ METHOD is \\=`:def\\=' or \\=`:ref\\='."
            (t
             "No LSP server active for this buffer. Configure lsp-mode or eglot for accurate results.")))))))
 
-(defun emacs-simple-ide-mcp--find-definition (args)
+(defun simple-ide-mcp--find-definition (args)
   "Find definition of symbol in ARGS via xref."
-  (emacs-simple-ide-mcp--find-xref args :def))
+  (simple-ide-mcp--find-xref args :def))
 
-(defun emacs-simple-ide-mcp--find-references (args)
+(defun simple-ide-mcp--find-references (args)
   "Find references to symbol in ARGS via xref."
-  (emacs-simple-ide-mcp--find-xref args :ref))
+  (simple-ide-mcp--find-xref args :ref))
 
-(defun emacs-simple-ide-mcp--get-diagnostics (args)
+(defun simple-ide-mcp--get-diagnostics (args)
   "Get flycheck diagnostics for a file.
 ARGS is an alist with optional key: path."
   (unless (featurep 'flycheck)
@@ -248,7 +248,7 @@ ARGS is an alist with optional key: path."
          flycheck-current-errors
          "\n"))))))
 
-(defun emacs-simple-ide-mcp--show-diff (args)
+(defun simple-ide-mcp--show-diff (args)
   "Show a git diff in Magit.
 ARGS is an alist with optional keys: file, base, target."
   (unless (require 'magit nil t)
@@ -267,13 +267,13 @@ ARGS is an alist with optional keys: file, base, target."
     (raise-frame)
     "Showing diff in Magit"))
 
-(defun emacs-simple-ide-mcp--eval (args)
+(defun simple-ide-mcp--eval (args)
   "Evaluate an Emacs Lisp expression from ARGS and return the result."
   (let* ((expr (alist-get 'expression args)))
     (unless expr (error "Expression is required"))
     (format "%S" (eval (read expr) t))))
 
-(defun emacs-simple-ide-mcp--show-status (args)
+(defun simple-ide-mcp--show-status (args)
   "Show git status in Magit.
 ARGS is an alist with optional key: repo."
   (unless (require 'magit nil t)
@@ -287,29 +287,29 @@ ARGS is an alist with optional key: repo."
 
 ;;; ─── JSON-RPC 2.0 ────────────────────────────────────────────────────────────
 
-(defun emacs-simple-ide-mcp--ok (id result)
+(defun simple-ide-mcp--ok (id result)
   "Return a JSON-RPC success response with ID and RESULT."
   `((jsonrpc . "2.0") (id . ,id) (result . ,result)))
 
-(defun emacs-simple-ide-mcp--err (id code msg)
+(defun simple-ide-mcp--err (id code msg)
   "Return a JSON-RPC error response with ID, error CODE, and MSG."
   `((jsonrpc . "2.0") (id . ,id)
     (error . ((code . ,code) (message . ,msg)))))
 
-(defun emacs-simple-ide-mcp--call-tool (name args)
+(defun simple-ide-mcp--call-tool (name args)
   "Dispatch a tool call by NAME with ARGS; return a text string."
   (cond
-   ((string= name "open_file")       (emacs-simple-ide-mcp--open-file       args))
-   ((string= name "list_symbols")    (emacs-simple-ide-mcp--list-symbols    args))
-   ((string= name "find_definition") (emacs-simple-ide-mcp--find-definition args))
-   ((string= name "find_references") (emacs-simple-ide-mcp--find-references args))
-   ((string= name "get_diagnostics") (emacs-simple-ide-mcp--get-diagnostics args))
-   ((string= name "show_diff")       (emacs-simple-ide-mcp--show-diff       args))
-   ((string= name "show_status")     (emacs-simple-ide-mcp--show-status     args))
-   ((string= name "eval")            (emacs-simple-ide-mcp--eval            args))
+   ((string= name "open_file")       (simple-ide-mcp--open-file       args))
+   ((string= name "list_symbols")    (simple-ide-mcp--list-symbols    args))
+   ((string= name "find_definition") (simple-ide-mcp--find-definition args))
+   ((string= name "find_references") (simple-ide-mcp--find-references args))
+   ((string= name "get_diagnostics") (simple-ide-mcp--get-diagnostics args))
+   ((string= name "show_diff")       (simple-ide-mcp--show-diff       args))
+   ((string= name "show_status")     (simple-ide-mcp--show-status     args))
+   ((string= name "eval")            (simple-ide-mcp--eval            args))
    (t (error "Unknown tool: %s" name))))
 
-(defun emacs-simple-ide-mcp--dispatch (req)
+(defun simple-ide-mcp--dispatch (req)
   "Dispatch JSON-RPC request REQ (alist); return response alist or nil."
   (let* ((method (alist-get 'method req))
          (id     (alist-get 'id     req))
@@ -317,33 +317,33 @@ ARGS is an alist with optional key: repo."
     (condition-case err
         (cond
          ((string= method "initialize")
-          (emacs-simple-ide-mcp--ok id
+          (simple-ide-mcp--ok id
             `((protocolVersion . "2024-11-05")
               (capabilities    . ((tools . ((listChanged . :json-false)))))
-              (serverInfo      . ((name . "emacs-simple-ide-mcp") (version . "1.0.0"))))))
+              (serverInfo      . ((name . "simple-ide-mcp") (version . "1.0.0"))))))
          ;; Notifications — no response
          ((or (string= method "initialized")
               (string= method "notifications/initialized"))
           nil)
          ((string= method "tools/list")
-          (emacs-simple-ide-mcp--ok id `((tools . ,(apply #'vector (emacs-simple-ide-mcp--available-tools))))))
+          (simple-ide-mcp--ok id `((tools . ,(apply #'vector (simple-ide-mcp--available-tools))))))
          ((string= method "tools/call")
           (let* ((name      (alist-get 'name      params))
                  (tool-args (alist-get 'arguments params))
-                 (text      (emacs-simple-ide-mcp--call-tool name tool-args)))
-            (emacs-simple-ide-mcp--ok id
+                 (text      (simple-ide-mcp--call-tool name tool-args)))
+            (simple-ide-mcp--ok id
               `((content  . [((type . "text") (text . ,text))])
                 (isError  . :json-false)))))
          (id
-          (emacs-simple-ide-mcp--err id -32601 (format "Method not found: %s" method)))
+          (simple-ide-mcp--err id -32601 (format "Method not found: %s" method)))
          (t nil))
       (error
        (when id
-         (emacs-simple-ide-mcp--err id -32603 (error-message-string err)))))))
+         (simple-ide-mcp--err id -32603 (error-message-string err)))))))
 
 ;;; ─── HTTP handler ────────────────────────────────────────────────────────────
 
-(defun httpd/mcp (proc _path _query request)
+(defun simple-ide-mcp--httpd-handler (proc _path _query request)
   "Handle MCP HTTP requests at /mcp.
 PROC is the network process; REQUEST is the parsed header alist."
   (let* ((json-object-type 'alist)
@@ -353,7 +353,7 @@ PROC is the network process; REQUEST is the parsed header alist."
          (req      (condition-case nil
                        (json-read-from-string (or body ""))
                      (error nil)))
-         (response (when req (emacs-simple-ide-mcp--dispatch req)))
+         (response (when req (simple-ide-mcp--dispatch req)))
          (response-json (if response
                             (let ((json-encoding-pretty-print nil))
                               (json-encode response))
@@ -361,25 +361,27 @@ PROC is the network process; REQUEST is the parsed header alist."
     (with-httpd-buffer proc "application/json"
       (insert response-json))))
 
+(fset 'httpd/mcp #'simple-ide-mcp--httpd-handler)
+
 ;;; ─── Server control ──────────────────────────────────────────────────────────
 
-(defun emacs-simple-ide-mcp-start ()
-  "Start the Emacs MCP HTTP server on `emacs-simple-ide-mcp-port'."
+(defun simple-ide-mcp-start ()
+  "Start the MCP HTTP server on `simple-ide-mcp-port'."
   (interactive)
-  (setq httpd-port emacs-simple-ide-mcp-port
+  (setq httpd-port simple-ide-mcp-port
         httpd-root "/tmp")
   (condition-case nil (httpd-stop) (error nil))
   (httpd-start)
-  (message "emacs-simple-ide-mcp: server started on http://localhost:%d/mcp" emacs-simple-ide-mcp-port))
+  (message "simple-ide-mcp: server started on http://localhost:%d/mcp" simple-ide-mcp-port))
 
-(defun emacs-simple-ide-mcp-stop ()
-  "Stop the Emacs MCP HTTP server."
+(defun simple-ide-mcp-stop ()
+  "Stop the MCP HTTP server."
   (interactive)
   (httpd-stop)
-  (message "emacs-simple-ide-mcp: server stopped"))
+  (message "simple-ide-mcp: server stopped"))
 
 (unless noninteractive
-  (emacs-simple-ide-mcp-start))
+  (simple-ide-mcp-start))
 
-(provide 'emacs-simple-ide-mcp)
-;;; emacs-simple-ide-mcp.el ends here
+(provide 'simple-ide-mcp)
+;;; simple-ide-mcp.el ends here
