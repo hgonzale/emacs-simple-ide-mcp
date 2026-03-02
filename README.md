@@ -23,19 +23,37 @@ Listens on `http://localhost:7777/mcp`.
 - [`simple-httpd`](https://github.com/skeeto/emacs-web-server)
 - `flycheck`, `magit`, and an LSP server are optional but unlock their respective tools
 
-## Installation (Doom Emacs)
+## Installation
+
+### MELPA
+
+Once the package is on MELPA:
+
+```emacs-lisp
+(use-package emacs-simple-ide-mcp
+  :ensure t)
+```
+
+### MELPA (straight.el)
+
+```emacs-lisp
+(straight-use-package 'emacs-simple-ide-mcp)
+```
+
+### Doom Emacs
 
 `packages.el`:
 ```emacs-lisp
-(package! simple-httpd)
+(package! emacs-simple-ide-mcp
+  :recipe (:host github :repo "hgonzale/emacs-simple-ide-mcp"))
 ```
 
 `config.el`:
 ```emacs-lisp
-(load! "emacs-simple-ide-mcp/emacs-simple-ide-mcp")
+(use-package! emacs-simple-ide-mcp)
 ```
 
-The server starts automatically when Emacs loads the file interactively.
+The server starts automatically when Emacs loads the package interactively.
 
 ## License
 

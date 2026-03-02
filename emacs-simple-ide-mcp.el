@@ -1,13 +1,22 @@
 ;;; emacs-simple-ide-mcp.el --- MCP HTTP server for Emacs -*- lexical-binding: t; -*-
-;;
+
+;; Copyright (C) 2026 hgonzale
+
+;; Author: hgonzale <1747263+hgonzale@users.noreply.github.com>
+;; Maintainer: hgonzale <1747263+hgonzale@users.noreply.github.com>
+;; Version: 0.1.0
+;; Package-Requires: ((emacs "29.1") (simple-httpd "1.5.1"))
+;; Keywords: tools, mcp, lsp
+;; URL: https://github.com/hgonzale/emacs-simple-ide-mcp
+
 ;;; Commentary:
-;;
+
 ;; Starts an HTTP MCP server on localhost:7777, allowing Claude to interact
 ;; with the running Emacs instance: open files, navigate symbols, query LSP
 ;; diagnostics, and show Magit views.
 ;;
-;; Usage: loaded via (load! "emacs-simple-ide-mcp/emacs-simple-ide-mcp") in config.el.
-;;        Requires (package! simple-httpd) in packages.el.
+;; Usage: (require 'emacs-simple-ide-mcp)
+;; The server starts automatically in interactive sessions.
 
 ;;; Code:
 
